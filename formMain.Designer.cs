@@ -82,6 +82,7 @@
             this.textDecode.Location = new System.Drawing.Point(291, 47);
             this.textDecode.Multiline = true;
             this.textDecode.Name = "textDecode";
+            this.textDecode.ReadOnly = true;
             this.textDecode.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.textDecode.Size = new System.Drawing.Size(268, 363);
             this.textDecode.TabIndex = 2;

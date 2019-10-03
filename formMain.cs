@@ -18,35 +18,12 @@ namespace GrandChasePacketDecoder
             InitializeComponent();
         }
 
-        private void decode()
+        private void decode(byte[] binary, byte[] key)
         {
-            decoding = 1;
-
-            string packetText = textPacket.Text;
-            string keyText = textKey.Text;
-
-            if (packetText.Trim().Length == 0)
-            {
-                decoding = 0;
-                return;
-            }
-
-            byte[] binary = null;
-            byte[] key = null;
-
-            try
-            {
-                binary = Util.str2hex(packetText);
-                key = Util.str2hex(keyText);
-            }
-            catch (Exception ex)
-            {
-            }
-
             // DES 추출
             try
             {
-                if (key == null)
+                if (key == null || key.Length < 8)
                 {
                     byte[] packet = PacketCrypto.DecryptAll(binary, PacketCrypto.GC_DES_KEY);
                     if (packet[0] == 0 && packet[1] == 1 && packet[12] == 8 && packet[24] == 8) // opcode: 1
@@ -70,6 +47,10 @@ namespace GrandChasePacketDecoder
                 string packetString = Util.hex2str(packet);
                 textDecode.Text = packetString;
 
+                //
+                string keyText = Util.hex2str(key);
+                string packetText = Util.hex2str(binary);
+
                 // opcode
                 int opcode = packet[0] * 256 + packet[1];
 
@@ -85,7 +66,6 @@ namespace GrandChasePacketDecoder
             {
             }
 
-            decoding = 0;
         }
 
         private void textPacket_TextChanged(object sender, EventArgs e)
@@ -95,7 +75,44 @@ namespace GrandChasePacketDecoder
                 return;
             }
 
-            decode();
+            decoding = 1;
+
+            string packetText = textPacket.Text;
+            string keyText = textKey.Text;
+
+            if (packetText.Trim().Length == 0)
+            {
+                decoding = 0;
+                return;
+            }
+
+            byte[] binary = null;
+            byte[] key = null;
+
+            try
+            {
+                binary = Util.str2hex(packetText);
+                key = Util.str2hex(keyText);
+            }
+            catch (Exception ex)
+            {
+            }
+
+            if(binary.Length > 2) {
+                byte[] currentBin;
+                int readCount = 0;
+
+                while (readCount < binary.Length)
+                {
+                    int currentSize = binary[readCount] + binary[readCount + 1] * 256;
+                    currentBin = Util.ReadBytes(binary, readCount, currentSize);
+                    readCount += currentSize;
+
+                    decode(currentBin, key);
+                }
+            }
+
+            decoding = 0;
         }
 
         private void listHistory_DoubleClick(object sender, EventArgs e)
