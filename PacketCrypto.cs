@@ -19,7 +19,7 @@ namespace GrandChasePacketDecoder
             byte[] packet;
             packet = DecryptPacket(packetBuffer, key);
 
-            if (packet[6] == 1)
+            if (packet.Length > 6 && packet[6] == 1)
                 packet = UncompressPacket(packet);
 
             return packet;
@@ -45,25 +45,55 @@ namespace GrandChasePacketDecoder
 
         public static byte[] UncompressPacket(byte[] packetToUncompress)
         {
-            byte[] first = Util.ReadBytes(packetToUncompress, 0, 11);
-            byte[] secondBefore = Util.ReadBytes(packetToUncompress, 11, (packetToUncompress.Length - 11));
-            byte[] secondAfter = DecompressData(secondBefore);
+            int size = packetToUncompress[2] * 16777216 + packetToUncompress[3] * 65536 + packetToUncompress[4] * 256 + packetToUncompress[5];
+            int oriSize = packetToUncompress[10] * 16777216 + packetToUncompress[9] * 65536 + packetToUncompress[8] * 256 + packetToUncompress[7];
 
-            return Util.ConcatBytes(first, secondAfter);
+            // try 11
+            try
+            {
+                byte[] first = Util.ReadBytes(packetToUncompress, 0, 11);
+                byte[] secondBefore = Util.ReadBytes(packetToUncompress, 11, packetToUncompress.Length - 11);
+                byte[] secondAfter = DecompressData(secondBefore, oriSize);
+                return Util.ConcatBytes(first, secondAfter);
+            }
+            catch (Exception ex)
+            {
+
+            }
+
+            // try 13
+            try
+            {
+                byte[] first = Util.ReadBytes(packetToUncompress, 0, 11);
+                byte[] secondBefore = Util.ReadBytes(packetToUncompress, 13, packetToUncompress.Length - 13);
+                byte[] secondAfter = DecompressData(secondBefore, oriSize);
+                return Util.ConcatBytes(first, secondAfter);
+            }
+            catch (Exception ex)
+            {
+
+            }
+
+            return packetToUncompress; // fail
         }
 
-        public static byte[] DecompressData(byte[] buffer)
+        public static byte[] DecompressData(byte[] buffer, int originalSize)
         {
-            MemoryStream resultStream = new MemoryStream();
+            byte[] buf = new byte[originalSize];
+            int totalRead = 0;
+
             using ( MemoryStream ms = new MemoryStream(buffer) ) {
                 using ( DeflateStream ds = new DeflateStream(ms, CompressionMode.Decompress) ) {
-                    ds.CopyTo(resultStream);
+                    //ds.CopyTo(resultStream);
+                    int len;
+                    while (originalSize > totalRead && (len = ds.Read(buf, totalRead, buf.Length - totalRead)) > 0)
+                    {
+                        totalRead += len;
+                    }  
                     ds.Close();
                 }
             }
-            Byte[] decompressedByte = resultStream.ToArray();
-            resultStream.Dispose();
-            return decompressedByte;
+            return buf;
         }
     }
 }
